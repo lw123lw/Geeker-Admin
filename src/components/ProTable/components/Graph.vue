@@ -9,6 +9,7 @@
         :on-line-click="onLineClick"
         :on-canvas-click="onCanvasClick"
         @before-create-line="beforeCreateLine"
+        @mousemove="onMouseMove"
       >
         <template #node="{ node }">
           <div class="line-text" @click="showNodeMenus(node, $event)" @contextmenu.prevent.stop="showNodeMenus(node, $event)">
@@ -18,6 +19,15 @@
         <template #graph-plug>
           <RGEditingConnectController />
           <RGEditingLineController />
+          <slot name="tip">
+            <div
+              v-if="isShowNodeTips"
+              class="c-tips"
+              :style="{ left: nodeTipsPosition.x + 'px', top: nodeTipsPosition.y + 'px' }"
+            >
+              <div>节点名称: {{ currentNode?.text }}</div>
+            </div>
+          </slot>
         </template>
       </RelationGraph>
     </div>
@@ -33,10 +43,11 @@
     >
       <el-space :direction="'vertical'">
         <slot name="preAction" :node-object="currentNode?.data"></slot>
-        <el-button type="primary" :icon="View" @click.stop="doAction('查看')">查 看</el-button>
-        <el-button type="primary" :icon="EditPen" @click.stop="doAction('编辑')">编 辑</el-button>
-        <el-button type="primary" :icon="Delete" @click.stop="doAction('删除')">删 除</el-button>
-        <slot name="action" :node-object="currentNode?.data"></slot>
+        <slot name="action" :node-object="currentNode?.data">
+          <el-button type="primary" :icon="View" @click.stop="doAction('查看')">查 看</el-button>
+          <el-button type="primary" :icon="EditPen" @click.stop="doAction('编辑')">编 辑</el-button>
+          <el-button type="primary" :icon="Delete" @click.stop="doAction('删除')">删 除</el-button>
+        </slot>
       </el-space>
     </div>
   </div>
@@ -51,7 +62,8 @@ import RelationGraph, {
   RGLink,
   RGNode,
   RGEditingConnectController,
-  RGEditingLineController
+  RGEditingLineController,
+  RGUserEvent
 } from "relation-graph-vue3";
 import { Delete, EditPen, View } from "@element-plus/icons-vue";
 import { ElNotification } from "element-plus";
@@ -99,20 +111,20 @@ const relationGraph$ = ref<RelationGraphComponent>();
 const isShowNodeMenuPanel = ref(false);
 // 节点菜单定位
 const nodeMenuPanelPosition = ref({ x: 0, y: 0 });
+
+const isShowNodeTips = ref(false);
+const nodeTipsPosition = ref({ x: 0, y: 0 });
 // 当前选择的节点
 const currentNode: Ref<RGNode | null> = ref(null);
 // 被操作的原节点
-const originalLine = ref<RGLine>({
-  from: "",
-  to: ""
-});
+const originalLine = ref({ from: "", to: "" });
 
 const options = ref({
   defaultExpandHolderPosition: "right",
   allowSwitchLineShape: true, //    是否在工具栏中显示切换线条形状的按钮
   allowSwitchJunctionPoint: true, // 是否在工具栏中显示切换连接点位置的按钮
   defaultJunctionPoint: "border", // 默认的连线与节点接触的方式（border:边缘/ltrb:上下左右/tb:上下/lr:左右）当布局为树状布局时应使用tb或者lr，这样才会好看
-  defaultLineShape: 6, //           默认的线条样式 int：1-6
+  defaultLineShape: 1, //           默认的线条样式 int：1-6
   defaultLineWidth: 3, //           默认的线条粗细（像素）
   allowShowMiniToolBar: true, //    是否展示右侧工具栏
   maxLayoutTimes: 20,
@@ -121,6 +133,13 @@ const options = ref({
   useAnimationWhenRefresh: true,
   hideNodeContentByZoom: false,
   defaultLineColor: "#b28a60",
+  defaultLineMarker: {
+    markerWidth: 15,
+    markerHeight: 15,
+    refX: 6,
+    refY: 6,
+    data: "M2,2 L10,6 L2,10 L6,6 L2,2"
+  },
   layouts: [
     {
       label: "Center",
@@ -285,6 +304,23 @@ const onCanvasClick = () => {
   });
 };
 
+const showNodeTips = ($event: RGUserEvent, nodeObject: RGNode) => {
+  const _base_position = graphInstance.value.options.fullscreen ? { x: 0, y: 0 } : graphInstance.value.getBoundingClientRect();
+  currentNode.value = nodeObject;
+  nodeTipsPosition.value.x = $event.clientX - _base_position.x + 10;
+  nodeTipsPosition.value.y = $event.clientY - _base_position.y + 10;
+};
+
+const onMouseMove = ($event: RGUserEvent) => {
+  const node = graphInstance.value.isNode($event.target);
+  if (node) {
+    showNodeTips($event, node);
+    isShowNodeTips.value = true;
+    return;
+  }
+  isShowNodeTips.value = false;
+};
+
 // 恢复线条
 const replyLine = () => {
   graphInstance.value.addLines([originalLine.value]);
@@ -310,10 +346,13 @@ const beforeCreateLine = (rgActionParams: any, setEventReturnValue: (customRetur
   jsonData.value.lines.map((item: any, index: number) => {
     if (item?.to == fromNode?.text) {
       delete jsonData.value.lines[index];
-      jsonData.value.lines.unshift({
+      const newLine = {
         from: toNode.text,
         to: fromNode.text
-      });
+      };
+      console.log("======= newLine ( Graph.vue ) =======\n", newLine);
+      jsonData.value.lines.unshift(newLine);
+      console.log(jsonData.value.lines);
       return;
     }
     if (item[props.childrenName] && item[props.childrenName].length > 0) {
@@ -379,5 +418,21 @@ defineExpose({
   font-size: 23px;
   font-weight: bold;
   line-height: 24px;
+}
+.c-tips {
+  z-index: 999;
+  padding: 10px;
+  width: 200px;
+  position: absolute;
+  border-radius: 10px;
+  background-color: #333333;
+  color: #ffffff;
+  border: #eeeeee solid 1px;
+  box-shadow: 0px 0px 8px #cccccc;
+  & > div {
+    line-height: 25px;
+    padding-left: 10px;
+    font-size: 12px;
+  }
 }
 </style>

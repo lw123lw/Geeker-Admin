@@ -332,10 +332,12 @@ const emit = defineEmits<{
 }>();
 
 const _search = () => {
+  console.log(searchParam.value);
   if (!isShowGraph.value) search();
   else {
-    console.log({ searchParam });
-    relationGraph.value.focusOnNode(searchParam.value[props.labelName]);
+    const labelName = props.labelName as string;
+    const labelNameArr = labelName?.split(".");
+    relationGraph.value?.focusOnNode(searchParam.value[labelNameArr[labelNameArr.length - 1]]);
   }
   emit("search");
 };
@@ -377,9 +379,9 @@ const switchGraphStatus = () => {
   nodes.map((item, index) => {
     if (item.text === "表格") delete nodes[index];
   });
-  lines.every((line, index) => {
-    if (line.from === "表格") delete lines[index];
-  });
+  // lines.every((line, index) => {
+  //   if (line.from === "表格") delete lines[index];
+  // });
   console.log({ nodes, lines });
 
   // 创建树结构
@@ -415,7 +417,6 @@ const switchGraphStatus = () => {
     treeArray.forEach(tree => {
       // 查找与当前项的 name 匹配的节点
       const matchingNode = nodes.find(node => node?.text === tree.name);
-      console.log("matchingNode", matchingNode);
       if (matchingNode) {
         // 去掉 name 属性
         delete tree.name;

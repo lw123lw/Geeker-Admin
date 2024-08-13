@@ -21,6 +21,7 @@
         @action="openDrawer"
         @delete-action="deleteAccount"
         label-name="username"
+        label-key="id"
       >
         <!-- 表格 header 按钮 -->
         <template #tableHeader>
@@ -28,12 +29,9 @@
         </template>
         <!-- 表格操作 -->
         <template #operation="scope">
-          <el-button type="primary" link :icon="View" @click="openDrawer('查看', scope.row)">查看</el-button>
-          <el-button type="primary" link :icon="EditPen" @click="openDrawer('编辑', scope.row)">编辑</el-button>
-          <el-button type="primary" link :icon="Delete" @click="deleteAccount(scope.row)">删除</el-button>
-        </template>
-        <template #graphPreAction="scope">
-          <el-button type="primary" :icon="View" @click="openDrawer('新增', scope.row)">新增</el-button>
+          <el-button type="primary" :icon="View" @click="openDrawer('查看', scope.row)">查看</el-button>
+          <el-button type="primary" :icon="EditPen" @click="openDrawer('编辑', scope.row)">编辑</el-button>
+          <el-button type="primary" :icon="Delete" @click="deleteAccount(scope.row)">删除</el-button>
         </template>
       </ProTable>
       <UserDrawer ref="drawerRef" />
@@ -47,7 +45,7 @@ import { onMounted, reactive, ref } from "vue";
 import { User } from "@/api/interface";
 import { genderType } from "@/utils/dict";
 import { useHandleData } from "@/hooks/useHandleData";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElNotification } from "element-plus";
 import ProTable from "@/components/ProTable/index.vue";
 import TreeFilter from "@/components/TreeFilter/index.vue";
 import ImportExcel from "@/components/ImportExcel/index.vue";
